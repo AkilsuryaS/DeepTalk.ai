@@ -54,12 +54,14 @@ def generate_quiz(knowledge_base, context):
 
 def parse_quiz(quiz_text):
     questions = []
-    current_question = {}
+    current_question = None  # Initialize as None
     for line in quiz_text.split("\n"):
         line = line.strip()  # Remove leading/trailing whitespace
         if line.startswith("Q"):
+            # If there's a current question, add it to the list
             if current_question:
                 questions.append(current_question)
+            # Initialize a new question
             try:
                 question_text = line.split(": ")[1]  # Extract the question text
                 current_question = {"question": question_text, "options": [], "answer": ""}
@@ -67,14 +69,22 @@ def parse_quiz(quiz_text):
                 st.error(f"Error parsing question: {line}")
                 continue
         elif line.startswith("A)") or line.startswith("B)") or line.startswith("C)") or line.startswith("D)"):
-            current_question["options"].append(line)
+            # Ensure current_question is initialized before appending options
+            if current_question is not None:
+                current_question["options"].append(line)
+            else:
+                st.error(f"Option found without a question: {line}")
         elif line.startswith("Answer:"):
-            try:
-                current_question["answer"] = line.split(": ")[1]  # Extract the correct answer
-            except IndexError:
-                st.error(f"Error parsing answer: {line}")
-                continue
-    if current_question:
+            # Ensure current_question is initialized before setting the answer
+            if current_question is not None:
+                try:
+                    current_question["answer"] = line.split(": ")[1]  # Extract the correct answer
+                except IndexError:
+                    st.error(f"Error parsing answer: {line}")
+            else:
+                st.error(f"Answer found without a question: {line}")
+    # Add the last question if it exists
+    if current_question is not None:
         questions.append(current_question)
     return questions
 
