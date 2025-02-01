@@ -18,7 +18,8 @@ def load_knowledge_base():
     # Load the persisted FAISS database
     knowledge_base = FAISS.load_local(
         folder_path="data/faiss_db",
-        embeddings=embeddings
+        embeddings=embeddings,
+        allow_dangerous_deserialization=True
     )
     return knowledge_base
 
