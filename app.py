@@ -1,6 +1,6 @@
 import streamlit as st
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS  # Replace Chroma with FAISS
+from langchain_community.vectorstores import FAISS
 import groq
 
 # Initialize Groq client
@@ -44,12 +44,12 @@ def answer_question(knowledge_base, question, simplify=False):
     response = call_groq_api(prompt, simplify=simplify)
     return response
 
-def generate_quiz(knowledge_base):
-    # Sample context from the knowledge base
-    docs = knowledge_base.similarity_search("deep learning fundamentals", k=3)
+def generate_quiz(knowledge_base, question):
+    # Generate quiz based on the user's question
+    docs = knowledge_base.similarity_search(question, k=3)
     context = " ".join([doc.page_content for doc in docs])
     
-    quiz_prompt = f"""Based on this context about deep learning: {context}
+    quiz_prompt = f"""Based on this context: {context}
     Generate a quiz with 3 multiple-choice questions.
     Each question should have 4 options, with only one correct answer.
     Format the quiz as follows:
@@ -75,8 +75,28 @@ def generate_quiz(knowledge_base):
     D) [Option 4]
     Correct Answer: [Correct option]
     """
-    response = call_groq_api(quiz_prompt)
-    return response
+    quiz = call_groq_api(quiz_prompt)
+    return quiz
+
+def parse_quiz(quiz):
+    """Parse the quiz string into questions, options, and correct answers."""
+    questions = []
+    lines = quiz.split("\n")
+    i = 0
+    while i < len(lines):
+        if lines[i].startswith("Question"):
+            question = lines[i].split(":")[1].strip()
+            options = [lines[i + j].strip() for j in range(1, 5)]
+            correct_answer = lines[i + 5].split(":")[1].strip()
+            questions.append({
+                "question": question,
+                "options": options,
+                "correct_answer": correct_answer
+            })
+            i += 6
+        else:
+            i += 1
+    return questions
 
 # Streamlit app
 st.title("Deep Learning with PyTorch Chatbot")
@@ -90,16 +110,16 @@ except Exception as e:
     st.error(f"Error loading knowledge base: {str(e)}")
     st.stop()
 
-# Chat interface
+# Sidebar for chat history
+st.sidebar.title("Chat History")
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display chat history
+# Display chat history in the sidebar
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+    st.sidebar.write(f"{message['role'].capitalize()}: {message['content']}")
 
-# Chat input
+# Chat interface
 if prompt := st.chat_input("Ask me anything about Deep Learning:"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -116,11 +136,35 @@ if prompt := st.chat_input("Ask me anything about Deep Learning:"):
 
 # Quiz button
 if st.button("Generate Quiz"):
-    with st.spinner("Generating quiz..."):
-        quiz = generate_quiz(knowledge_base)
-        st.session_state.quiz = quiz
+    if "messages" in st.session_state and st.session_state.messages:
+        # Use the last user question to generate the quiz
+        last_user_question = next(
+            (msg["content"] for msg in reversed(st.session_state.messages) if msg["role"] == "user"),
+            None
+        )
+        if last_user_question:
+            with st.spinner("Generating quiz..."):
+                quiz = generate_quiz(knowledge_base, last_user_question)
+                st.session_state.quiz = quiz
+                st.session_state.quiz_questions = parse_quiz(quiz)
+        else:
+            st.warning("No user question found to generate a quiz.")
+    else:
+        st.warning("No chat history found to generate a quiz.")
 
-# Display quiz
-if "quiz" in st.session_state:
+# Display quiz and handle user answers
+if "quiz_questions" in st.session_state:
     st.subheader("Quiz")
-    st.write(st.session_state.quiz)
+    for i, q in enumerate(st.session_state.quiz_questions):
+        st.write(f"**Question {i + 1}:** {q['question']}")
+        user_answer = st.radio(
+            f"Select an answer for Question {i + 1}:",
+            q["options"],
+            key=f"quiz_{i}"
+        )
+        if st.button(f"Submit Answer for Question {i + 1}"):
+            if user_answer.startswith(q["correct_answer"]):
+                st.success("Correct! 🎉")
+            else:
+                st.error(f"Incorrect. The correct answer is: {q['correct_answer']}")
+            st.write(f"Explanation: {call_groq_api(f'Explain why the correct answer is {q["correct_answer"]} for the question: {q["question"]}')}")
