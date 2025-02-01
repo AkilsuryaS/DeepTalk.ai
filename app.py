@@ -31,7 +31,7 @@ def call_groq_api(prompt, simplify=False):
         response = client.chat.completions.create(
             model="deepseek-r1-distill-llama-70b",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=512,
+            max_tokens=1024,
             temperature=0.7,
         )
         return response.choices[0].message.content
