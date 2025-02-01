@@ -24,10 +24,12 @@ def load_knowledge_base():
     )
     return knowledge_base
 
-def call_groq_api(prompt, simplify=False):
+def call_groq_api(prompt, simplify=False, concise=False):
     try:
         if simplify:
-            prompt = f"Explain the following in a very simple and easy-to-understand way: {prompt}"
+            prompt = f"Explain the following in a very simple and easy-to-understand way in 1-2 sentences: {prompt}"
+        elif concise:
+            prompt = f"Provide a concise and crisp answer to the following in 1-2 sentences: {prompt}"
         response = client.chat.completions.create(
             model="deepseek-r1-distill-llama-70b",
             messages=[{"role": "user", "content": prompt}],
@@ -38,16 +40,16 @@ def call_groq_api(prompt, simplify=False):
     except Exception as e:
         return f"Error: {str(e)}"
 
-def answer_question(knowledge_base, question, simplify=False):
+def answer_question(knowledge_base, question, simplify=False, concise=False):
     docs = knowledge_base.similarity_search(question)
     context = " ".join([doc.page_content for doc in docs])
     prompt = f"Context: {context}\n\nQuestion: {question}\n\nAnswer:"
-    response = call_groq_api(prompt, simplify=simplify)
+    response = call_groq_api(prompt, simplify=simplify, concise=concise)
     return response
 
 def generate_quiz(knowledge_base, context):
-    prompt = f"Context: {context}\n\nGenerate a quiz with 3 multiple-choice questions based on the context. Each question should have 4 options and one correct answer. Format the quiz as follows:\n\nQ1: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ2: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ3: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]"
-    quiz = call_groq_api(prompt)
+    prompt = f"Context: {context}\n\nGenerate a quiz with 3 multiple-choice questions based on the context. Each question should be concise and have 4 options with one correct answer. Format the quiz as follows:\n\nQ1: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ2: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ3: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]"
+    quiz = call_groq_api(prompt, concise=True)
     return quiz
 
 def parse_quiz(quiz_text):
@@ -167,7 +169,7 @@ if prompt := st.chat_input("Ask me anything about Deep Learning:"):
     
     # Generate response
     with st.spinner("Thinking..."):
-        response = answer_question(knowledge_base, prompt, simplify=True)
+        response = answer_question(knowledge_base, prompt, concise=True)
     
     # Add assistant response to current chat
     st.session_state.current_chat["messages"].append({"role": "assistant", "content": response})
