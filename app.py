@@ -28,7 +28,7 @@ def load_knowledge_base():
 def call_groq_api(prompt, simplify=False):
     try:
         if simplify:
-            prompt = f"Explain the following in a very simple and easy-to-understand way: {prompt}"
+            prompt = f"Explain the following in short and easy-to-understand way: {prompt}"
         response = client.chat.completions.create(
             model="deepseek-r1-distill-llama-70b",
             messages=[{"role": "user", "content": prompt}],
