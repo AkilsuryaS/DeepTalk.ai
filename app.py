@@ -56,14 +56,24 @@ def parse_quiz(quiz_text):
     questions = []
     current_question = {}
     for line in quiz_text.split("\n"):
+        line = line.strip()  # Remove leading/trailing whitespace
         if line.startswith("Q"):
             if current_question:
                 questions.append(current_question)
-            current_question = {"question": line.split(": ")[1], "options": [], "answer": ""}
+            try:
+                question_text = line.split(": ")[1]  # Extract the question text
+                current_question = {"question": question_text, "options": [], "answer": ""}
+            except IndexError:
+                st.error(f"Error parsing question: {line}")
+                continue
         elif line.startswith("A)") or line.startswith("B)") or line.startswith("C)") or line.startswith("D)"):
             current_question["options"].append(line)
         elif line.startswith("Answer:"):
-            current_question["answer"] = line.split(": ")[1]
+            try:
+                current_question["answer"] = line.split(": ")[1]  # Extract the correct answer
+            except IndexError:
+                st.error(f"Error parsing answer: {line}")
+                continue
     if current_question:
         questions.append(current_question)
     return questions
