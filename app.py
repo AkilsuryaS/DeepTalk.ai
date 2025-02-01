@@ -110,46 +110,46 @@ chats_yesterday = []
 chats_7_days = []
 older_chats = []
 
-for chat in st.session_state.chat_sessions:
+for idx, chat in enumerate(st.session_state.chat_sessions):
     chat_date = chat.get("date", today)
     if chat_date == today:
-        chats_today.append(chat)
+        chats_today.append((idx, chat))
     elif chat_date == yesterday:
-        chats_yesterday.append(chat)
+        chats_yesterday.append((idx, chat))
     elif chat_date >= seven_days_ago:
-        chats_7_days.append(chat)
+        chats_7_days.append((idx, chat))
     else:
-        older_chats.append(chat)
+        older_chats.append((idx, chat))
 
 # Display chats in the sidebar
 if chats_today:
     st.sidebar.subheader("Today")
-    for chat in chats_today:
-        if st.sidebar.button(chat["title"]):
+    for idx, chat in chats_today:
+        if st.sidebar.button(chat["title"], key=f"today_{idx}"):  # Unique key for each button
             st.session_state.current_chat = chat
             st.session_state.quiz = None
             st.session_state.user_answers = {}
 
 if chats_yesterday:
     st.sidebar.subheader("Yesterday")
-    for chat in chats_yesterday:
-        if st.sidebar.button(chat["title"]):
+    for idx, chat in chats_yesterday:
+        if st.sidebar.button(chat["title"], key=f"yesterday_{idx}"):  # Unique key for each button
             st.session_state.current_chat = chat
             st.session_state.quiz = None
             st.session_state.user_answers = {}
 
 if chats_7_days:
     st.sidebar.subheader("7 Days")
-    for chat in chats_7_days:
-        if st.sidebar.button(chat["title"]):
+    for idx, chat in chats_7_days:
+        if st.sidebar.button(chat["title"], key=f"7days_{idx}"):  # Unique key for each button
             st.session_state.current_chat = chat
             st.session_state.quiz = None
             st.session_state.user_answers = {}
 
 if older_chats:
     st.sidebar.subheader("Older")
-    for chat in older_chats:
-        if st.sidebar.button(chat["title"]):
+    for idx, chat in older_chats:
+        if st.sidebar.button(chat["title"], key=f"older_{idx}"):  # Unique key for each button
             st.session_state.current_chat = chat
             st.session_state.quiz = None
             st.session_state.user_answers = {}
