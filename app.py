@@ -204,13 +204,15 @@ for message in st.session_state.current_chat["messages"]:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-
 # Quiz section
-if st.button("Generate Quiz"):
-    context = " ".join([doc.page_content for doc in knowledge_base.similarity_search(st.session_state.current_chat["messages"][-1]["content"])])
-    quiz_text = generate_quiz(knowledge_base, context, st.session_state.current_chat["messages"][-1]["content"])
-    st.session_state.quiz = parse_quiz(quiz_text)
-    st.session_state.user_answers = {}
+if len(st.session_state.current_chat["messages"]) > 0:  # Check if there are any messages
+    if st.button("Generate Quiz"):
+        context = " ".join([doc.page_content for doc in knowledge_base.similarity_search(st.session_state.current_chat["messages"][-1]["content"])])
+        quiz_text = generate_quiz(knowledge_base, context, st.session_state.current_chat["messages"][-1]["content"])
+        st.session_state.quiz = parse_quiz(quiz_text)
+        st.session_state.user_answers = {}
+else:
+    st.warning("Please provide a prompt about what you want to learn related to Deep Learning with PyTorch. After that, I can generate a quiz for you.")
 
 if st.session_state.quiz:
     st.subheader("Quiz")
