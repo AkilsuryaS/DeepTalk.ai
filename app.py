@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 
 # Initialize Groq client
-groq_api_key = "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"
+groq_api_key = "YOUR_GROQ_API_KEY"
 client = groq.Client(api_key=groq_api_key)
 
 @st.cache_resource
