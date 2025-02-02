@@ -194,8 +194,7 @@ if prompt := st.chat_input("Ask me anything about Deep Learning:"):
     
     # Add assistant response to current chat
     #st.session_state.current_chat["messages"].append({"role": "assistant", "content": response})
-    #st.session_state.current_chat["messages"].append({"role": "assistant", "content": f"**Answer:** {response}"})
-    st.session_state.current_chat["messages"].append({ "content": f"**Answer:** {response}"})
+    st.session_state.current_chat["messages"].append({"role": "assistant", "content": f"**Answer:** {response}"})
 
 
 
