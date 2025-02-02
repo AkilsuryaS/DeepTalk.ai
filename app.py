@@ -34,13 +34,28 @@ def call_groq_api(prompt, simplify=False, concise=False):
             model="deepseek-r1-distill-llama-70b",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=1024,
-            temperature=0.,
+            temperature=0.5,
         )
         return response.choices[0].message.content
     except Exception as e:
         return f"Error: {str(e)}"
 
+def is_question_relevant(knowledge_base, question, threshold=0.5):
+    """Check if the question is relevant to the knowledge base."""
+    docs = knowledge_base.similarity_search_with_score(question, k=1)
+    if docs:
+        # docs is a list of tuples (Document, score)
+        # Lower score means higher similarity
+        score = docs[0][1]
+        return score < threshold
+    return False
+
 def answer_question(knowledge_base, question, simplify=False, concise=False):
+    # Check if the question is relevant
+    if not is_question_relevant(knowledge_base, question):
+        return "I can only answer questions related to deep learning. Please ask a question related to deep learning."
+    
+    # If the question is relevant, proceed to generate a response
     docs = knowledge_base.similarity_search(question)
     context = " ".join([doc.page_content for doc in docs])
     prompt = f"Context: {context}\n\nQuestion: {question}\n\nAnswer:"
@@ -193,10 +208,7 @@ if prompt := st.chat_input("Ask me anything about Deep Learning:"):
         response = answer_question(knowledge_base, prompt, concise=True)
     
     # Add assistant response to current chat
-    #st.session_state.current_chat["messages"].append({"role": "assistant", "content": response})
     st.session_state.current_chat["messages"].append({"role": "assistant", "content": f"**Answer:** {response}"})
-
-
 
     # Save current chat to chat sessions if it's new
     if st.session_state.current_chat not in st.session_state.chat_sessions:
