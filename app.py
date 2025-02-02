@@ -4,6 +4,7 @@ from langchain_community.vectorstores import FAISS
 import groq
 from datetime import datetime, timedelta
 
+
 # Initialize Groq client
 groq_api_key = "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"
 client = groq.Client(api_key=groq_api_key)
@@ -27,35 +28,22 @@ def load_knowledge_base():
 def call_groq_api(prompt, simplify=False, concise=False):
     try:
         if simplify:
-            prompt = f"Explain the following in a very simple and easy-to-understand way in 1-2 sentences: {prompt}"
+            prompt = f"Given the following extracted parts of a long document and a question, create a final answer in 5-6 sentences with references. 
+If you don't know the answer, just say that you don't know. Don't try to make up an answer. {prompt}"
         elif concise:
-            prompt = f"Provide a concise and crisp answer to the following in 5-6 sentences: {prompt}"
+            prompt = f"Given the following extracted parts of a long document and a question, create a final answer  in 5-6 sentences with references. 
+If you don't know the answer, just say that you don't know. Don't try to make up an answer. {prompt}"
         response = client.chat.completions.create(
             model="deepseek-r1-distill-llama-70b",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=1024,
-            temperature=0.5,
+            temperature=0.,
         )
         return response.choices[0].message.content
     except Exception as e:
         return f"Error: {str(e)}"
 
-def is_question_relevant(knowledge_base, question, threshold=0.5):
-    """Check if the question is relevant to the knowledge base."""
-    docs = knowledge_base.similarity_search_with_score(question, k=1)
-    if docs:
-        # docs is a list of tuples (Document, score)
-        # Lower score means higher similarity
-        score = docs[0][1]
-        return score < threshold
-    return False
-
 def answer_question(knowledge_base, question, simplify=False, concise=False):
-    # Check if the question is relevant
-    if not is_question_relevant(knowledge_base, question):
-        return "I can only answer questions related to deep learning. Please ask a question related to deep learning."
-    
-    # If the question is relevant, proceed to generate a response
     docs = knowledge_base.similarity_search(question)
     context = " ".join([doc.page_content for doc in docs])
     prompt = f"Context: {context}\n\nQuestion: {question}\n\nAnswer:"
@@ -208,7 +196,10 @@ if prompt := st.chat_input("Ask me anything about Deep Learning:"):
         response = answer_question(knowledge_base, prompt, concise=True)
     
     # Add assistant response to current chat
+    #st.session_state.current_chat["messages"].append({"role": "assistant", "content": response})
     st.session_state.current_chat["messages"].append({"role": "assistant", "content": f"**Answer:** {response}"})
+
+
 
     # Save current chat to chat sessions if it's new
     if st.session_state.current_chat not in st.session_state.chat_sessions:
