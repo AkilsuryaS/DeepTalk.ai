@@ -71,12 +71,17 @@ def answer_question(knowledge_base, question, simplify=False, concise=False):
     return response
 
 def generate_quiz(knowledge_base, context, user_prompt):
-        ##### Only generate quiz if the topic is deep learning related
+    """
+    Generate a quiz only if the topic is related to deep learning.
+    """
+    # Check if the topic is related to deep learning
     if not is_deep_learning_related(user_prompt, knowledge_base):
         return "I can only generate quizzes about deep learning topics. Please ask about deep learning concepts first."
-    ######
-
+    
+    # Generate the quiz prompt
     prompt = f"Context: {context}\n\nBased on the user's question: '{user_prompt}', generate a quiz with 3 multiple-choice questions. Each question should be concise and have 4 options with one correct answer. Format the quiz as follows:\n\nQ1: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ2: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ3: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]"
+    
+    # Call the Groq API to generate the quiz
     quiz = call_groq_api(prompt, concise=True)
     return quiz
 
@@ -241,12 +246,20 @@ for message in st.session_state.current_chat["messages"]:
         st.markdown(message["content"])
 
 # Quiz section
+# Quiz section
 if len(st.session_state.current_chat["messages"]) > 0:  # Check if there are any messages
     if st.button("Generate Quiz"):
-        context = " ".join([doc.page_content for doc in knowledge_base.similarity_search(st.session_state.current_chat["messages"][-1]["content"])])
-        quiz_text = generate_quiz(knowledge_base, context, st.session_state.current_chat["messages"][-1]["content"])
-        st.session_state.quiz = parse_quiz(quiz_text)
-        st.session_state.user_answers = {}
+        # Get the last user message
+        last_user_message = st.session_state.current_chat["messages"][-1]["content"]
+        
+        # Check if the last user message is related to deep learning
+        if is_deep_learning_related(last_user_message, knowledge_base):
+            context = " ".join([doc.page_content for doc in knowledge_base.similarity_search(last_user_message)])
+            quiz_text = generate_quiz(knowledge_base, context, last_user_message)
+            st.session_state.quiz = parse_quiz(quiz_text)
+            st.session_state.user_answers = {}
+        else:
+            st.warning("The last question is not related to deep learning. Please ask a question about deep learning concepts to generate a quiz.")
 else:
     st.warning("Please provide a prompt about what you want to learn related to Deep Learning with PyTorch. After that, I can generate a quiz for you.")
 
