@@ -188,7 +188,7 @@ def parse_quiz(quiz_text):
 
 # Streamlit app
 st.title("Deep Learning with PyTorch Chatbot")
-st.caption("Learn Deep Learning concepts from the d2l.pdf textbook")
+st.caption("Learn Deep Learning concepts from the [d2l.pdf textbook](https://d2l.ai/d2l-en.pdf)")
 
 st.write("Learn Deep Learning concepts interactively and test your knowledge with quizzes!")
 
