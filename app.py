@@ -79,48 +79,111 @@ def generate_quiz(knowledge_base, context, user_prompt):
         return "I can only generate quizzes about deep learning topics. Please ask about deep learning concepts first."
     
     # Generate the quiz prompt
-    prompt = f"Context: {context}\n\nBased on the user's question: '{user_prompt}', generate a quiz with 3 multiple-choice questions. Each question should be concise and have 4 options with one correct answer. Format the quiz as follows:\n\nQ1: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ2: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ3: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]"
+    prompt = f"""Context: {context}
+
+Based on the user's question: '{user_prompt}', generate a quiz with 3 multiple-choice questions. 
+Follow this EXACT format for each question:
+
+Q1: [Question text here?]
+A) [Option A text]
+B) [Option B text]
+C) [Option C text]
+D) [Option D text]
+Answer: [A/B/C/D]
+
+Q2: [Question text here?]
+A) [Option A text]
+B) [Option B text]
+C) [Option C text]
+D) [Option D text]
+Answer: [A/B/C/D]
+
+Q3: [Question text here?]
+A) [Option A text]
+B) [Option B text]
+C) [Option C text]
+D) [Option D text]
+Answer: [A/B/C/D]"""
     
     # Call the Groq API to generate the quiz
     quiz = call_groq_api(prompt, concise=True)
+    
+    # Validate the quiz format
+    if not quiz or not quiz.strip():
+        return "Failed to generate a valid quiz. Please try again."
+        
+    if not all(x in quiz for x in ['Q1:', 'Q2:', 'Q3:', 'Answer:']):
+        return "Generated quiz is not in the correct format. Please try again."
+    
     return quiz
 
 def parse_quiz(quiz_text):
- 
-
+    """
+    Parse quiz text into structured format with better error handling.
+    """
     questions = []
-    current_question = None  # Initialize as None
-    for line in quiz_text.split("\n"):
-        line = line.strip()  # Remove leading/trailing whitespace
-        if line.startswith("Q"):
-            # If there's a current question, add it to the list
-            if current_question:
+    current_question = None
+    question_found = False
+
+    # Split the text into lines and clean them
+    lines = [line.strip() for line in quiz_text.split('\n') if line.strip()]
+    
+    for line in lines:
+        # Handle question lines
+        if line.startswith('Q') and ':' in line:
+            question_found = True
+            # If there's a current question, save it before starting new one
+            if current_question and current_question['options']:
                 questions.append(current_question)
-            # Initialize a new question
+            
+            # Extract question text
             try:
-                question_text = line.split(": ")[1]  # Extract the question text
-                current_question = {"question": question_text, "options": [], "answer": ""}
+                question_text = line.split(': ', 1)[1]
+                current_question = {
+                    "question": question_text,
+                    "options": [],
+                    "answer": ""
+                }
             except IndexError:
                 st.error(f"Error parsing question: {line}")
                 continue
-        elif line.startswith("A)") or line.startswith("B)") or line.startswith("C)") or line.startswith("D)"):
-            # Ensure current_question is initialized before appending options
+                
+        # Handle option lines
+        elif line.startswith(('A)', 'B)', 'C)', 'D)')):
+            if not question_found:
+                continue  # Skip options if no question has been found yet
             if current_question is not None:
                 current_question["options"].append(line)
             else:
                 st.error(f"Option found without a question: {line}")
-        elif line.startswith("Answer:"):
-            # Ensure current_question is initialized before setting the answer
+                
+        # Handle answer lines
+        elif line.startswith('Answer:'):
             if current_question is not None:
                 try:
-                    current_question["answer"] = line.split(": ")[1]  # Extract the correct answer
+                    current_question["answer"] = line.split(': ')[1]
                 except IndexError:
                     st.error(f"Error parsing answer: {line}")
             else:
                 st.error(f"Answer found without a question: {line}")
-    # Add the last question if it exists
-    if current_question is not None:
+    
+    # Add the last question if it exists and has options
+    if current_question and current_question['options']:
         questions.append(current_question)
+    
+    # Validate the parsed quiz
+    if not questions:
+        st.error("No valid questions were parsed from the quiz text")
+        return None
+        
+    for i, q in enumerate(questions):
+        if not q['options']:
+            st.error(f"Question {i+1} has no options")
+            return None
+        if not q['answer']:
+            st.error(f"Question {i+1} has no answer")
+            return None
+    
     return questions
 
 # Streamlit app
