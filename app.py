@@ -186,6 +186,7 @@ for message in st.session_state.current_chat["messages"]:
 if prompt := st.chat_input("Ask me anything about Deep Learning:"):
     # Add user message to current chat
     st.session_state.current_chat["messages"].append({"role": "user", "content": prompt})
+
     
     # Generate response
     with st.spinner("Thinking..."):
@@ -193,7 +194,9 @@ if prompt := st.chat_input("Ask me anything about Deep Learning:"):
     
     # Add assistant response to current chat
     #st.session_state.current_chat["messages"].append({"role": "assistant", "content": response})
-    st.session_state.current_chat["messages"].append({"role": "assistant", "content": f"**Answer:** {response}"})
+    #st.session_state.current_chat["messages"].append({"role": "assistant", "content": f"**Answer:** {response}"})
+    st.session_state.current_chat["messages"].append({ "content": f"**Answer:** {response}"})
+
 
 
     # Save current chat to chat sessions if it's new
