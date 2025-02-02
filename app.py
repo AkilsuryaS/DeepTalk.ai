@@ -40,7 +40,28 @@ def call_groq_api(prompt, simplify=False, concise=False):
     except Exception as e:
         return f"Error: {str(e)}"
 
+def is_related_to_deep_learning(question):
+    """Check if the question is related to deep learning."""
+    prompt = f"Is the following question related to deep learning or machine learning? Answer with 'yes' or 'no': {question}"
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-r1-distill-llama-70b",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=10,
+            temperature=0.0,
+        )
+        answer = response.choices[0].message.content.strip().lower()
+        return answer == "yes"
+    except Exception as e:
+        st.error(f"Error checking question relevance: {str(e)}")
+        return False
+
 def answer_question(knowledge_base, question, simplify=False, concise=False):
+    # Check if the question is related to deep learning
+    if not is_related_to_deep_learning(question):
+        return "Please ask a question related to deep learning."
+    
+    # If the question is related to deep learning, proceed with generating a response
     docs = knowledge_base.similarity_search(question)
     context = " ".join([doc.page_content for doc in docs])
     prompt = f"Context: {context}\n\nQuestion: {question}\n\nAnswer:"
@@ -187,16 +208,12 @@ if prompt := st.chat_input("Ask me anything about Deep Learning:"):
     # Add user message to current chat
     st.session_state.current_chat["messages"].append({"role": "user", "content": prompt})
 
-    
     # Generate response
     with st.spinner("Thinking..."):
         response = answer_question(knowledge_base, prompt, concise=True)
     
     # Add assistant response to current chat
-    #st.session_state.current_chat["messages"].append({"role": "assistant", "content": response})
     st.session_state.current_chat["messages"].append({"role": "assistant", "content": f"**Answer:** {response}"})
-
-
 
     # Save current chat to chat sessions if it's new
     if st.session_state.current_chat not in st.session_state.chat_sessions:
@@ -210,11 +227,15 @@ for message in st.session_state.current_chat["messages"]:
 
 # Quiz section
 if len(st.session_state.current_chat["messages"]) > 0:  # Check if there are any messages
-    if st.button("Generate Quiz"):
-        context = " ".join([doc.page_content for doc in knowledge_base.similarity_search(st.session_state.current_chat["messages"][-1]["content"])])
-        quiz_text = generate_quiz(knowledge_base, context, st.session_state.current_chat["messages"][-1]["content"])
-        st.session_state.quiz = parse_quiz(quiz_text)
-        st.session_state.user_answers = {}
+    last_message = st.session_state.current_chat["messages"][-1]["content"]
+    if is_related_to_deep_learning(last_message):
+        if st.button("Generate Quiz"):
+            context = " ".join([doc.page_content for doc in knowledge_base.similarity_search(last_message)])
+            quiz_text = generate_quiz(knowledge_base, context, last_message)
+            st.session_state.quiz = parse_quiz(quiz_text)
+            st.session_state.user_answers = {}
+    else:
+        st.warning("Please ask a question related to deep learning to generate a quiz.")
 else:
     st.warning("Please provide a prompt about what you want to learn related to Deep Learning with PyTorch. After that, I can generate a quiz for you.")
 
