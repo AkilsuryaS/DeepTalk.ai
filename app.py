@@ -24,6 +24,20 @@ def load_knowledge_base():
     )
     return knowledge_base
 
+def is_deep_learning_related(question, knowledge_base):
+    """
+    Check if the question is related to deep learning by comparing similarity scores
+    with the knowledge base content
+    """
+    # Get the most similar documents and their scores
+    docs_and_scores = knowledge_base.similarity_search_with_score(question)
+    
+    # If the best match has a high similarity score (lower score means more similar)
+    # We consider it related to deep learning
+    if docs_and_scores and docs_and_scores[0][1] < 1.0:  # Threshold can be adjusted
+        return True
+    return False
+
 def call_groq_api(prompt, simplify=False, concise=False):
     try:
         if simplify:
@@ -40,28 +54,12 @@ def call_groq_api(prompt, simplify=False, concise=False):
     except Exception as e:
         return f"Error: {str(e)}"
 
-def is_related_to_deep_learning(question):
-    """Check if the question is related to deep learning."""
-    prompt = f"Is the following question related to deep learning or machine learning? Answer with 'yes' or 'no': {question}"
-    try:
-        response = client.chat.completions.create(
-            model="deepseek-r1-distill-llama-70b",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=10,
-            temperature=0.0,
-        )
-        answer = response.choices[0].message.content.strip().lower()
-        return answer == "yes"
-    except Exception as e:
-        st.error(f"Error checking question relevance: {str(e)}")
-        return False
-
 def answer_question(knowledge_base, question, simplify=False, concise=False):
-    # Check if the question is related to deep learning
-    if not is_related_to_deep_learning(question):
-        return "Please ask a question related to deep learning."
+    # First check if the question is related to deep learning
+    if not is_deep_learning_related(question, knowledge_base):
+        return "I can only answer questions related to deep learning. Please ask a question about deep learning concepts, neural networks, or PyTorch."
     
-    # If the question is related to deep learning, proceed with generating a response
+    # If it is related, proceed with answering
     docs = knowledge_base.similarity_search(question)
     context = " ".join([doc.page_content for doc in docs])
     prompt = f"Context: {context}\n\nQuestion: {question}\n\nAnswer:"
@@ -69,49 +67,53 @@ def answer_question(knowledge_base, question, simplify=False, concise=False):
     return response
 
 def generate_quiz(knowledge_base, context, user_prompt):
+    # Only generate quiz if the topic is deep learning related
+    if not is_deep_learning_related(user_prompt, knowledge_base):
+        return "I can only generate quizzes about deep learning topics. Please ask about deep learning concepts first."
+    
     prompt = f"Context: {context}\n\nBased on the user's question: '{user_prompt}', generate a quiz with 3 multiple-choice questions. Each question should be concise and have 4 options with one correct answer. Format the quiz as follows:\n\nQ1: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ2: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ3: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]"
     quiz = call_groq_api(prompt, concise=True)
     return quiz
 
+# [Rest of the code remains the same, including parse_quiz and Streamlit UI components...]
 def parse_quiz(quiz_text):
+    # If the quiz_text is the error message, return None
+    if quiz_text.startswith("I can only generate quizzes"):
+        return None
+        
     questions = []
-    current_question = None  # Initialize as None
+    current_question = None
     for line in quiz_text.split("\n"):
-        line = line.strip()  # Remove leading/trailing whitespace
+        line = line.strip()
         if line.startswith("Q"):
-            # If there's a current question, add it to the list
             if current_question:
                 questions.append(current_question)
-            # Initialize a new question
             try:
-                question_text = line.split(": ")[1]  # Extract the question text
+                question_text = line.split(": ")[1]
                 current_question = {"question": question_text, "options": [], "answer": ""}
             except IndexError:
                 st.error(f"Error parsing question: {line}")
                 continue
-        elif line.startswith("A)") or line.startswith("B)") or line.startswith("C)") or line.startswith("D)"):
-            # Ensure current_question is initialized before appending options
+        elif line.startswith(("A)", "B)", "C)", "D)")):
             if current_question is not None:
                 current_question["options"].append(line)
             else:
                 st.error(f"Option found without a question: {line}")
         elif line.startswith("Answer:"):
-            # Ensure current_question is initialized before setting the answer
             if current_question is not None:
                 try:
-                    current_question["answer"] = line.split(": ")[1]  # Extract the correct answer
+                    current_question["answer"] = line.split(": ")[1]
                 except IndexError:
                     st.error(f"Error parsing answer: {line}")
             else:
                 st.error(f"Answer found without a question: {line}")
-    # Add the last question if it exists
     if current_question is not None:
         questions.append(current_question)
     return questions
 
 # Streamlit app
 st.title("Deep Learning with PyTorch Chatbot")
-st.write("Learn Deep Learning concepts interactively and test your knowledge with quizzes!")
+st.write("Learn Deep Learning concepts from the d2l.pdf textbook. Ask me anything about deep learning!")
 
 # Load the preprocessed knowledge base
 try:
@@ -121,7 +123,7 @@ except Exception as e:
     st.error(f"Error loading knowledge base: {str(e)}")
     st.stop()
 
-# Initialize session state for chat history and quiz
+# Initialize session state
 if "chat_sessions" not in st.session_state:
     st.session_state.chat_sessions = []
 if "current_chat" not in st.session_state:
@@ -140,64 +142,6 @@ if st.sidebar.button("New Chat"):
     st.session_state.quiz = None
     st.session_state.user_answers = {}
 
-# Display chat sessions grouped by date
-today = datetime.now().date()
-yesterday = today - timedelta(days=1)
-seven_days_ago = today - timedelta(days=7)
-
-# Group chats by date
-chats_today = []
-chats_yesterday = []
-chats_7_days = []
-older_chats = []
-
-for idx, chat in enumerate(st.session_state.chat_sessions):
-    chat_date = chat.get("date", today)
-    if chat_date == today:
-        chats_today.append((idx, chat))
-    elif chat_date == yesterday:
-        chats_yesterday.append((idx, chat))
-    elif chat_date >= seven_days_ago:
-        chats_7_days.append((idx, chat))
-    else:
-        older_chats.append((idx, chat))
-
-# Display chats in the sidebar
-if chats_today:
-    st.sidebar.subheader("Today")
-    for idx, chat in chats_today:
-        if st.sidebar.button(chat["title"], key=f"today_{idx}"):  # Unique key for each button
-            st.session_state.current_chat = chat
-            st.session_state.quiz = None
-            st.session_state.user_answers = {}
-
-if chats_yesterday:
-    st.sidebar.subheader("Yesterday")
-    for idx, chat in chats_yesterday:
-        if st.sidebar.button(chat["title"], key=f"yesterday_{idx}"):  # Unique key for each button
-            st.session_state.current_chat = chat
-            st.session_state.quiz = None
-            st.session_state.user_answers = {}
-
-if chats_7_days:
-    st.sidebar.subheader("7 Days")
-    for idx, chat in chats_7_days:
-        if st.sidebar.button(chat["title"], key=f"7days_{idx}"):  # Unique key for each button
-            st.session_state.current_chat = chat
-            st.session_state.quiz = None
-            st.session_state.user_answers = {}
-
-if older_chats:
-    st.sidebar.subheader("Older")
-    for idx, chat in older_chats:
-        if st.sidebar.button(chat["title"], key=f"older_{idx}"):  # Unique key for each button
-            st.session_state.current_chat = chat
-            st.session_state.quiz = None
-            st.session_state.user_answers = {}
-
-# Chat interface
-st.subheader(st.session_state.current_chat["title"])
-
 # Display current chat messages
 for message in st.session_state.current_chat["messages"]:
     with st.chat_message(message["role"]):
@@ -207,7 +151,7 @@ for message in st.session_state.current_chat["messages"]:
 if prompt := st.chat_input("Ask me anything about Deep Learning:"):
     # Add user message to current chat
     st.session_state.current_chat["messages"].append({"role": "user", "content": prompt})
-
+    
     # Generate response
     with st.spinner("Thinking..."):
         response = answer_question(knowledge_base, prompt, concise=True)
@@ -217,27 +161,22 @@ if prompt := st.chat_input("Ask me anything about Deep Learning:"):
 
     # Save current chat to chat sessions if it's new
     if st.session_state.current_chat not in st.session_state.chat_sessions:
-        st.session_state.current_chat["date"] = today
+        st.session_state.current_chat["date"] = datetime.now().date()
         st.session_state.chat_sessions.append(st.session_state.current_chat)
 
-# Display current chat messages
-for message in st.session_state.current_chat["messages"]:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
 # Quiz section
-if len(st.session_state.current_chat["messages"]) > 0:  # Check if there are any messages
-    last_message = st.session_state.current_chat["messages"][-1]["content"]
-    if is_related_to_deep_learning(last_message):
-        if st.button("Generate Quiz"):
-            context = " ".join([doc.page_content for doc in knowledge_base.similarity_search(last_message)])
-            quiz_text = generate_quiz(knowledge_base, context, last_message)
-            st.session_state.quiz = parse_quiz(quiz_text)
+if len(st.session_state.current_chat["messages"]) > 0:
+    if st.button("Generate Quiz"):
+        context = " ".join([doc.page_content for doc in knowledge_base.similarity_search(st.session_state.current_chat["messages"][-1]["content"])])
+        quiz_text = generate_quiz(knowledge_base, context, st.session_state.current_chat["messages"][-1]["content"])
+        parsed_quiz = parse_quiz(quiz_text)
+        if parsed_quiz:
+            st.session_state.quiz = parsed_quiz
             st.session_state.user_answers = {}
-    else:
-        st.warning("Please ask a question related to deep learning to generate a quiz.")
+        else:
+            st.warning(quiz_text)  # Show the warning message about deep learning topics
 else:
-    st.warning("Please provide a prompt about what you want to learn related to Deep Learning with PyTorch. After that, I can generate a quiz for you.")
+    st.info("Please ask a question about deep learning first. Then I can generate a quiz to test your understanding.")
 
 if st.session_state.quiz:
     st.subheader("Quiz")
