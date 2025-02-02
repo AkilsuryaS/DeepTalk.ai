@@ -214,26 +214,29 @@ if older_chats:
 # Chat interface
 st.subheader(st.session_state.current_chat["title"])
 
-# Display chat messages (moved after chat input)
+# Display current chat messages
 for message in st.session_state.current_chat["messages"]:
     with st.chat_message(message["role"]):
-        if message.get("type") == "text":
+        if message["type"] == "text":
             st.markdown(message["content"])
-        elif message.get("type") == "quiz":
-            with st.expander("Show Quiz Result", expanded=True):
-                st.write("**Quiz Results:**")
-                for i, question in enumerate(message["quiz"]):
-                    st.write(f"**Q{i+1}: {question['question']}**")
-                    st.write(f"Your answer: {message['user_answers'][i]}")
-                    st.write(f"Correct answer: {question['answer']}")
-                    if message['user_answers'][i].startswith(question['answer']):
-                        st.success("✅ Correct!")
-                    else:
-                        st.error("❌ Incorrect!")
-                st.write(f"**Score: {message['correct_answers']} out of {len(message['quiz'])} correct**")
+        elif message["type"] == "quiz":
+            st.write("**Quiz:**")
+            for i, question in enumerate(message["quiz"]):
+                st.write(f"**Q{i+1}: {question['question']}**")
+                st.write(f"Your answer: {message['user_answers'][i]}")
+                st.write(f"Correct answer: {question['answer']}")
+                if message["user_answers"][i].startswith(question["answer"]):
+                    st.success("✅ Correct!")
+                else:
+                    st.error("❌ Incorrect!")
+            st.write(f"**Score:** {message['correct_answers']} out of {len(message['quiz'])} correct")
 
 # Chat input
 if prompt := st.chat_input("Ask me anything about Deep Learning:"):
+    # Clear the quiz state when a new question is asked
+    st.session_state.quiz = None
+    st.session_state.user_answers = {}
+
     # Add user message to current chat
     st.session_state.current_chat["messages"].append({"role": "user", "type": "text", "content": prompt})
 
