@@ -40,16 +40,19 @@ def call_groq_api(prompt, simplify=False, concise=False):
     except Exception as e:
         return f"Error: {str(e)}"
 
-def answer_question(knowledge_base, question, simplify=False, concise=False):
-    # Retrieve documents from the knowledge base
-    docs = knowledge_base.similarity_search(question)
+def answer_question(knowledge_base, question, simplify=False, concise=False, relevance_threshold=0.5):
+    # Retrieve documents and their similarity scores
+    docs_and_scores = knowledge_base.similarity_search_with_score(question)
     
-    # Check if the retrieved documents are relevant
-    if not docs:
+    # Filter documents based on the relevance threshold
+    relevant_docs = [doc for doc, score in docs_and_scores if score >= relevance_threshold]
+    
+    # Check if any relevant documents were found
+    if not relevant_docs:
         return "Please ask a question related to deep learning."
     
-    # Combine the content of the retrieved documents to form the context
-    context = " ".join([doc.page_content for doc in docs])
+    # Combine the content of the relevant documents to form the context
+    context = " ".join([doc.page_content for doc in relevant_docs])
     
     # Formulate the prompt for the Groq API
     prompt = f"Context: {context}\n\nQuestion: {question}\n\nAnswer:"
