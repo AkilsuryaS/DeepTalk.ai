@@ -28,11 +28,9 @@ def load_knowledge_base():
 def call_groq_api(prompt, simplify=False, concise=False):
     try:
         if simplify:
-            prompt = f"Given the following extracted parts of a long document and a question, create a final answer in 5-6 sentences with references. 
-If you don't know the answer, just say that you don't know. Don't try to make up an answer. {prompt}"
+            prompt = f"Explain the following in a very simple and easy-to-understand way in 5-6 sentences. If you don't know the answer, just say you don't know. Don't makeup the answers: {prompt}"
         elif concise:
-            prompt = f"Given the following extracted parts of a long document and a question, create a final answer  in 5-6 sentences with references. 
-If you don't know the answer, just say that you don't know. Don't try to make up an answer. {prompt}"
+            prompt = f"Provide a concise and crisp answer to the following in 5-6 sentences.If you don't know the answer, just say you don't know. Don't makeup the answers: {prompt}"
         response = client.chat.completions.create(
             model="deepseek-r1-distill-llama-70b",
             messages=[{"role": "user", "content": prompt}],
