@@ -81,6 +81,11 @@ def generate_quiz(knowledge_base, context, user_prompt):
     return quiz
 
 def parse_quiz(quiz_text):
+    ##### If the quiz_text is the error message, return None
+    if quiz_text.startswith("I can only generate quizzes"):
+        return None
+    #####
+
     questions = []
     current_question = None  # Initialize as None
     for line in quiz_text.split("\n"):
