@@ -41,16 +41,8 @@ def call_groq_api(prompt, simplify=False, concise=False):
         return f"Error: {str(e)}"
 
 def answer_question(knowledge_base, question, simplify=False, concise=False):
-    # Get documents and their scores
-    docs_and_scores = knowledge_base.similarity_search_with_score(question)
-    
-    # If no relevant documents found or similarity score is too low
-    # Using a threshold of 0.5 (you may need to adjust this based on your embeddings)
-    if not docs_and_scores or docs_and_scores[0][1] > 0.5:
-        return "Please ask a question related to deep learning. I can help you understand concepts like neural networks, PyTorch, training methods, and other deep learning topics."
-    
-    # If we have relevant documents, proceed with generating the answer
-    context = " ".join([doc[0].page_content for doc in docs_and_scores])
+    docs = knowledge_base.similarity_search(question)
+    context = " ".join([doc.page_content for doc in docs])
     prompt = f"Context: {context}\n\nQuestion: {question}\n\nAnswer:"
     response = call_groq_api(prompt, simplify=simplify, concise=concise)
     return response
@@ -194,13 +186,17 @@ for message in st.session_state.current_chat["messages"]:
 if prompt := st.chat_input("Ask me anything about Deep Learning:"):
     # Add user message to current chat
     st.session_state.current_chat["messages"].append({"role": "user", "content": prompt})
+
     
     # Generate response
     with st.spinner("Thinking..."):
         response = answer_question(knowledge_base, prompt, concise=True)
     
     # Add assistant response to current chat
+    #st.session_state.current_chat["messages"].append({"role": "assistant", "content": response})
     st.session_state.current_chat["messages"].append({"role": "assistant", "content": f"**Answer:** {response}"})
+
+
 
     # Save current chat to chat sessions if it's new
     if st.session_state.current_chat not in st.session_state.chat_sessions:
