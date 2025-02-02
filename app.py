@@ -246,7 +246,6 @@ for message in st.session_state.current_chat["messages"]:
         st.markdown(message["content"])
 
 # Quiz section
-# Quiz section
 if len(st.session_state.current_chat["messages"]) > 0:  # Check if there are any messages
     last_user_message = st.session_state.current_chat["messages"][-1]["content"]
     
@@ -258,8 +257,9 @@ if len(st.session_state.current_chat["messages"]) > 0:  # Check if there are any
             st.session_state.quiz = parse_quiz(quiz_text)
             st.session_state.user_answers = {}
     else:
-        st.session_state.quiz = None  # Clear the quiz
-        st.session_state.user_answers = {}  # Clear user answers
+        # Clear the quiz state if the last question is unrelated
+        st.session_state.quiz = None
+        st.session_state.user_answers = {}
         st.warning("The last question is not related to deep learning. Please ask a question about deep learning concepts to generate a quiz.")
 else:
     st.warning("Please provide a prompt about what you want to learn related to Deep Learning with PyTorch. After that, I can generate a quiz for you.")
