@@ -24,6 +24,21 @@ def load_knowledge_base():
         allow_dangerous_deserialization=True
     )
     return knowledge_base
+####
+def is_deep_learning_related(question, knowledge_base):
+    """
+    Check if the question is related to deep learning by comparing similarity scores
+    with the knowledge base content
+    """
+    # Get the most similar documents and their scores
+    docs_and_scores = knowledge_base.similarity_search_with_score(question)
+    
+    # If the best match has a high similarity score (lower score means more similar)
+    # We consider it related to deep learning
+    if docs_and_scores and docs_and_scores[0][1] < 1.0:  # Threshold can be adjusted
+        return True
+    return False
+#####
 
 def call_groq_api(prompt, simplify=False, concise=False):
     try:
@@ -35,13 +50,20 @@ def call_groq_api(prompt, simplify=False, concise=False):
             model="deepseek-r1-distill-llama-70b",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=1024,
-            temperature=0.,
+            temperature=0.5,
         )
         return response.choices[0].message.content
     except Exception as e:
         return f"Error: {str(e)}"
 
 def answer_question(knowledge_base, question, simplify=False, concise=False):
+    #### First check if the question is related to deep learning
+    if not is_deep_learning_related(question, knowledge_base):
+        return "I can only answer questions related to deep learning. Please ask a question about deep learning concepts, neural networks, or PyTorch."
+    #####
+
+
+    # If it is related, proceed with answering
     docs = knowledge_base.similarity_search(question)
     context = " ".join([doc.page_content for doc in docs])
     prompt = f"Context: {context}\n\nQuestion: {question}\n\nAnswer:"
@@ -49,6 +71,11 @@ def answer_question(knowledge_base, question, simplify=False, concise=False):
     return response
 
 def generate_quiz(knowledge_base, context, user_prompt):
+        ##### Only generate quiz if the topic is deep learning related
+    if not is_deep_learning_related(user_prompt, knowledge_base):
+        return "I can only generate quizzes about deep learning topics. Please ask about deep learning concepts first."
+    ######
+    
     prompt = f"Context: {context}\n\nBased on the user's question: '{user_prompt}', generate a quiz with 3 multiple-choice questions. Each question should be concise and have 4 options with one correct answer. Format the quiz as follows:\n\nQ1: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ2: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ3: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]"
     quiz = call_groq_api(prompt, concise=True)
     return quiz
