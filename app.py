@@ -137,7 +137,7 @@ except Exception as e:
     st.error(f"Error loading knowledge base: {str(e)}")
     st.stop()
 
-# Initialize session state for chat history, quiz, and quiz history
+# Initialize session state for chat history and quiz
 if "chat_sessions" not in st.session_state:
     st.session_state.chat_sessions = []
 if "current_chat" not in st.session_state:
@@ -146,8 +146,6 @@ if "quiz" not in st.session_state:
     st.session_state.quiz = None
 if "user_answers" not in st.session_state:
     st.session_state.user_answers = {}
-if "quiz_history" not in st.session_state:
-    st.session_state.quiz_history = []
 
 # Sidebar for chat history
 st.sidebar.title("Chat History")
@@ -219,36 +217,39 @@ st.subheader(st.session_state.current_chat["title"])
 # Display current chat messages
 for message in st.session_state.current_chat["messages"]:
     with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+        if message["type"] == "text":
+            st.markdown(message["content"])
+        elif message["type"] == "quiz":
+            st.write("**Quiz:**")
+            for i, question in enumerate(message["quiz"]):
+                st.write(f"**Q{i+1}: {question['question']}**")
+                st.write(f"Your answer: {message['user_answers'][i]}")
+                st.write(f"Correct answer: {question['answer']}")
+            st.write(f"**Score:** {message['correct_answers']} out of {len(message['quiz'])} correct")
 
 # Chat input
 if prompt := st.chat_input("Ask me anything about Deep Learning:"):
     # Add user message to current chat
-    st.session_state.current_chat["messages"].append({"role": "user", "content": prompt})
+    st.session_state.current_chat["messages"].append({"role": "user", "type": "text", "content": prompt})
 
     # Generate response
     with st.spinner("Thinking..."):
         response = answer_question(knowledge_base, prompt, concise=True)
     
     # Add assistant response to current chat
-    st.session_state.current_chat["messages"].append({"role": "assistant", "content": f"**Answer:** {response}"})
+    st.session_state.current_chat["messages"].append({"role": "assistant", "type": "text", "content": f"**Answer:** {response}"})
 
     # Save current chat to chat sessions if it's new
     if st.session_state.current_chat not in st.session_state.chat_sessions:
         st.session_state.current_chat["date"] = today
         st.session_state.chat_sessions.append(st.session_state.current_chat)
 
-# Display current chat messages
-for message in st.session_state.current_chat["messages"]:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
 # Quiz section
 if len(st.session_state.current_chat["messages"]) > 0:  # Check if there are any messages
     # Get the last message that isn't from the assistant
     last_user_message = None
     for message in reversed(st.session_state.current_chat["messages"]):
-        if message["role"] == "user":
+        if message["role"] == "user" and message["type"] == "text":
             last_user_message = message["content"]
             break
     
@@ -287,28 +288,16 @@ if st.session_state.quiz:
                 st.error(f"Q{i+1}: Incorrect. The correct answer is {question['answer']}.")
         st.write(f"**You got {correct_answers} out of {len(st.session_state.quiz)} questions correct!**")
 
-        # Save the quiz result to quiz history
-        quiz_result = {
-            "question": last_user_message,
+        # Save the quiz result as a chat message
+        quiz_message = {
+            "role": "assistant",
+            "type": "quiz",
             "quiz": st.session_state.quiz,
             "user_answers": st.session_state.user_answers,
-            "correct_answers": correct_answers,
-            "total_questions": len(st.session_state.quiz)
+            "correct_answers": correct_answers
         }
-        st.session_state.quiz_history.append(quiz_result)
+        st.session_state.current_chat["messages"].append(quiz_message)
 
         # Clear the current quiz state
         st.session_state.quiz = None
         st.session_state.user_answers = {}
-
-# Display Quiz History
-if st.session_state.quiz_history:
-    st.subheader("Quiz History")
-    for idx, quiz_result in enumerate(st.session_state.quiz_history):
-        st.write(f"**Quiz {idx + 1}:** {quiz_result['question']}")
-        st.write(f"**Score:** {quiz_result['correct_answers']} out of {quiz_result['total_questions']} correct")
-        for i, question in enumerate(quiz_result["quiz"]):
-            st.write(f"**Q{i+1}: {question['question']}**")
-            st.write(f"Your answer: {quiz_result['user_answers'][i]}")
-            st.write(f"Correct answer: {question['answer']}")
-        st.write("---")
