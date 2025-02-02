@@ -225,6 +225,10 @@ for message in st.session_state.current_chat["messages"]:
                 st.write(f"**Q{i+1}: {question['question']}**")
                 st.write(f"Your answer: {message['user_answers'][i]}")
                 st.write(f"Correct answer: {question['answer']}")
+                if message["user_answers"][i].startswith(question["answer"]):
+                    st.success("✅ Correct!")
+                else:
+                    st.error("❌ Incorrect!")
             st.write(f"**Score:** {message['correct_answers']} out of {len(message['quiz'])} correct")
 
 # Chat input
@@ -280,21 +284,26 @@ if st.session_state.quiz:
 
     if st.button("Submit Quiz"):
         correct_answers = 0
+        quiz_results = []
         for i, question in enumerate(st.session_state.quiz):
-            if st.session_state.user_answers[i].startswith(question["answer"]):
+            is_correct = st.session_state.user_answers[i].startswith(question["answer"])
+            if is_correct:
                 correct_answers += 1
-                st.success(f"Q{i+1}: Correct! {question['answer']} is the right answer.")
-            else:
-                st.error(f"Q{i+1}: Incorrect. The correct answer is {question['answer']}.")
-        st.write(f"**You got {correct_answers} out of {len(st.session_state.quiz)} questions correct!**")
-
+            quiz_results.append({
+                "question": question["question"],
+                "user_answer": st.session_state.user_answers[i],
+                "correct_answer": question["answer"],
+                "is_correct": is_correct
+            })
+        
         # Save the quiz result as a chat message
         quiz_message = {
             "role": "assistant",
             "type": "quiz",
             "quiz": st.session_state.quiz,
             "user_answers": st.session_state.user_answers,
-            "correct_answers": correct_answers
+            "correct_answers": correct_answers,
+            "quiz_results": quiz_results
         }
         st.session_state.current_chat["messages"].append(quiz_message)
 
