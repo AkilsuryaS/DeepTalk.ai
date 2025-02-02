@@ -75,7 +75,7 @@ def generate_quiz(knowledge_base, context, user_prompt):
     if not is_deep_learning_related(user_prompt, knowledge_base):
         return "I can only generate quizzes about deep learning topics. Please ask about deep learning concepts first."
     ######
-    
+
     prompt = f"Context: {context}\n\nBased on the user's question: '{user_prompt}', generate a quiz with 3 multiple-choice questions. Each question should be concise and have 4 options with one correct answer. Format the quiz as follows:\n\nQ1: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ2: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ3: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]"
     quiz = call_groq_api(prompt, concise=True)
     return quiz
@@ -118,6 +118,8 @@ def parse_quiz(quiz_text):
 
 # Streamlit app
 st.title("Deep Learning with PyTorch Chatbot")
+st.caption("Learn Deep Learning concepts from the d2l.pdf textbook")
+
 st.write("Learn Deep Learning concepts interactively and test your knowledge with quizzes!")
 
 # Load the preprocessed knowledge base
