@@ -8,6 +8,23 @@ from datetime import datetime, timedelta
 groq_api_key = "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"
 client = groq.Client(api_key=groq_api_key)
 
+def is_deep_learning_related(question):
+    """
+    Check if the question is related to deep learning using keywords
+    """
+    deep_learning_keywords = [
+        'neural network', 'deep learning', 'pytorch', 'tensorflow', 'keras', 
+        'machine learning', 'ai', 'artificial intelligence', 'cnn', 'rnn', 'lstm',
+        'activation', 'gradient', 'backpropagation', 'epoch', 'batch', 'model',
+        'training', 'validation', 'dataset', 'layer', 'neuron', 'weight', 'bias',
+        'optimization', 'loss function', 'regularization', 'dropout', 'pooling',
+        'convolution', 'transformer', 'attention', 'embedding', 'classification',
+        'regression', 'supervised', 'unsupervised', 'fine-tuning', 'transfer learning'
+    ]
+    
+    question_lower = question.lower()
+    return any(keyword in question_lower for keyword in deep_learning_keywords)
+
 @st.cache_resource
 def load_knowledge_base():
     """Load the preprocessed FAISS database"""
@@ -41,6 +58,9 @@ def call_groq_api(prompt, simplify=False, concise=False):
         return f"Error: {str(e)}"
 
 def answer_question(knowledge_base, question, simplify=False, concise=False):
+    if not is_deep_learning_related(question):
+        return "Please ask a question related to deep learning. I can help you understand concepts like neural networks, PyTorch, training methods, and other deep learning topics."
+        
     docs = knowledge_base.similarity_search(question)
     context = " ".join([doc.page_content for doc in docs])
     prompt = f"Context: {context}\n\nQuestion: {question}\n\nAnswer:"
@@ -186,17 +206,13 @@ for message in st.session_state.current_chat["messages"]:
 if prompt := st.chat_input("Ask me anything about Deep Learning:"):
     # Add user message to current chat
     st.session_state.current_chat["messages"].append({"role": "user", "content": prompt})
-
     
     # Generate response
     with st.spinner("Thinking..."):
         response = answer_question(knowledge_base, prompt, concise=True)
     
     # Add assistant response to current chat
-    #st.session_state.current_chat["messages"].append({"role": "assistant", "content": response})
     st.session_state.current_chat["messages"].append({"role": "assistant", "content": f"**Answer:** {response}"})
-
-
 
     # Save current chat to chat sessions if it's new
     if st.session_state.current_chat not in st.session_state.chat_sessions:
