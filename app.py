@@ -247,22 +247,31 @@ for message in st.session_state.current_chat["messages"]:
 
 # Quiz section
 if len(st.session_state.current_chat["messages"]) > 0:  # Check if there are any messages
-    last_user_message = st.session_state.current_chat["messages"][-1]["content"]
+    # Get the last message that isn't from the assistant
+    last_user_message = None
+    for message in reversed(st.session_state.current_chat["messages"]):
+        if message["role"] == "user":
+            last_user_message = message["content"]
+            break
     
-    # Only show the "Generate Quiz" button if the last question is related to deep learning
-    if is_deep_learning_related(last_user_message, knowledge_base):
-        if st.button("Generate Quiz"):
-            context = " ".join([doc.page_content for doc in knowledge_base.similarity_search(last_user_message)])
-            quiz_text = generate_quiz(knowledge_base, context, last_user_message)
-            st.session_state.quiz = parse_quiz(quiz_text)
+    if last_user_message:
+        # Check if the last user question was deep learning related
+        if is_deep_learning_related(last_user_message, knowledge_base):
+            # Show generate quiz button only for deep learning questions
+            col1, col2 = st.columns([1, 4])  # Create columns for better spacing
+            with col1:
+                if st.button("Generate Quiz", key="generate_quiz_btn"):
+                    context = " ".join([doc.page_content for doc in knowledge_base.similarity_search(last_user_message)])
+                    quiz_text = generate_quiz(knowledge_base, context, last_user_message)
+                    st.session_state.quiz = parse_quiz(quiz_text)
+                    st.session_state.user_answers = {}
+        else:
+            # Clear quiz state and show warning for non-deep learning questions
+            st.session_state.quiz = None
             st.session_state.user_answers = {}
-    else:
-        # Clear the quiz state if the last question is unrelated
-        st.session_state.quiz = None
-        st.session_state.user_answers = {}
-        st.warning("The last question is not related to deep learning. Please ask a question about deep learning concepts to generate a quiz.")
+            st.warning("Please ask a question about deep learning concepts to generate a quiz. The last question was not related to the deep learning content from d2l.pdf.")
 else:
-    st.warning("Please provide a prompt about what you want to learn related to Deep Learning with PyTorch. After that, I can generate a quiz for you.")
+    st.info("Start by asking a question about deep learning concepts from d2l.pdf. Then you can generate a quiz to test your understanding.")
 
 # Display the quiz if it exists
 if st.session_state.quiz:
