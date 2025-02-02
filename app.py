@@ -221,19 +221,19 @@ for message in st.session_state.current_chat["messages"]:
 
 # Chat input
 if prompt := st.chat_input("Ask me anything about Deep Learning:"):
+    # Clear the quiz state when a new question is asked
+    st.session_state.quiz = None
+    st.session_state.user_answers = {}
+
     # Add user message to current chat
     st.session_state.current_chat["messages"].append({"role": "user", "content": prompt})
 
-    
     # Generate response
     with st.spinner("Thinking..."):
         response = answer_question(knowledge_base, prompt, concise=True)
     
     # Add assistant response to current chat
-    #st.session_state.current_chat["messages"].append({"role": "assistant", "content": response})
     st.session_state.current_chat["messages"].append({"role": "assistant", "content": f"**Answer:** {response}"})
-
-
 
     # Save current chat to chat sessions if it's new
     if st.session_state.current_chat not in st.session_state.chat_sessions:
@@ -264,6 +264,7 @@ if len(st.session_state.current_chat["messages"]) > 0:  # Check if there are any
 else:
     st.warning("Please provide a prompt about what you want to learn related to Deep Learning with PyTorch. After that, I can generate a quiz for you.")
 
+# Display the quiz if it exists
 if st.session_state.quiz:
     st.subheader("Quiz")
     for i, question in enumerate(st.session_state.quiz):
