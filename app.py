@@ -29,12 +29,12 @@ def call_groq_api(prompt, simplify=False, concise=False):
         if simplify:
             prompt = f"Explain the following in a very simple and easy-to-understand way in 1-2 sentences: {prompt}"
         elif concise:
-            prompt = f"Provide a concise and crisp answer to the following in 1-2 sentences: {prompt}"
+            prompt = f"Provide a concise and crisp answer to the following in 5-6 sentences: {prompt}"
         response = client.chat.completions.create(
             model="deepseek-r1-distill-llama-70b",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=1024,
-            temperature=0.7,
+            temperature=0.5,
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -183,31 +183,26 @@ for message in st.session_state.current_chat["messages"]:
         st.markdown(message["content"])
 
 # Chat input
-# Chat input
 if prompt := st.chat_input("Ask me anything about Deep Learning:"):
     # Add user message to current chat
     st.session_state.current_chat["messages"].append({"role": "user", "content": prompt})
+
     
     # Generate response
     with st.spinner("Thinking..."):
         response = answer_question(knowledge_base, prompt, concise=True)
     
-    # Split the response into thinking steps and final answer
-    response_parts = response.split("<think>")
-    
-    # Add thinking steps to current chat
-    for part in response_parts[:-1]:
-        st.session_state.current_chat["messages"].append({"role": "assistant", "content": part.strip()})
-    
-    # Add final answer to current chat with "**Answer:**"
-    st.session_state.current_chat["messages"].append({"role": "assistant", "content": f"**Answer:** {response_parts[-1].strip()}"})
+    # Add assistant response to current chat
+    #st.session_state.current_chat["messages"].append({"role": "assistant", "content": response})
+    st.session_state.current_chat["messages"].append({"role": "assistant", "content": f"**Answer:** {response}"})
+
+
 
     # Save current chat to chat sessions if it's new
     if st.session_state.current_chat not in st.session_state.chat_sessions:
         st.session_state.current_chat["date"] = today
         st.session_state.chat_sessions.append(st.session_state.current_chat)
 
-        
 # Display current chat messages
 for message in st.session_state.current_chat["messages"]:
     with st.chat_message(message["role"]):
