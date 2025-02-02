@@ -192,7 +192,9 @@ if prompt := st.chat_input("Ask me anything about Deep Learning:"):
         response = answer_question(knowledge_base, prompt, concise=True)
     
     # Add assistant response to current chat
-    st.session_state.current_chat["messages"].append({"role": "assistant", "content": response})
+    #st.session_state.current_chat["messages"].append({"role": "assistant", "content": response})
+    st.session_state.current_chat["messages"].append({"role": "assistant", "content": f"**Answer:** {response}"})
+
 
     # Save current chat to chat sessions if it's new
     if st.session_state.current_chat not in st.session_state.chat_sessions:
