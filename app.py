@@ -137,7 +137,7 @@ except Exception as e:
     st.error(f"Error loading knowledge base: {str(e)}")
     st.stop()
 
-# Initialize session state for chat history and quiz
+# Initialize session state for chat history, quiz, and quiz history
 if "chat_sessions" not in st.session_state:
     st.session_state.chat_sessions = []
 if "current_chat" not in st.session_state:
@@ -146,6 +146,8 @@ if "quiz" not in st.session_state:
     st.session_state.quiz = None
 if "user_answers" not in st.session_state:
     st.session_state.user_answers = {}
+if "quiz_history" not in st.session_state:
+    st.session_state.quiz_history = []
 
 # Sidebar for chat history
 st.sidebar.title("Chat History")
@@ -221,10 +223,6 @@ for message in st.session_state.current_chat["messages"]:
 
 # Chat input
 if prompt := st.chat_input("Ask me anything about Deep Learning:"):
-    # Clear the quiz state when a new question is asked
-    st.session_state.quiz = None
-    st.session_state.user_answers = {}
-
     # Add user message to current chat
     st.session_state.current_chat["messages"].append({"role": "user", "content": prompt})
 
@@ -266,9 +264,7 @@ if len(st.session_state.current_chat["messages"]) > 0:  # Check if there are any
                     st.session_state.quiz = parse_quiz(quiz_text)
                     st.session_state.user_answers = {}
         else:
-            # Clear quiz state and show warning for non-deep learning questions
-            st.session_state.quiz = None
-            st.session_state.user_answers = {}
+            # Show warning for non-deep learning questions
             st.warning("Please ask a question about deep learning concepts to generate a quiz. The last question was not related to the deep learning content from d2l.pdf.")
 else:
     st.info("Start by asking a question about deep learning concepts from d2l.pdf. Then you can generate a quiz to test your understanding.")
@@ -290,3 +286,29 @@ if st.session_state.quiz:
             else:
                 st.error(f"Q{i+1}: Incorrect. The correct answer is {question['answer']}.")
         st.write(f"**You got {correct_answers} out of {len(st.session_state.quiz)} questions correct!**")
+
+        # Save the quiz result to quiz history
+        quiz_result = {
+            "question": last_user_message,
+            "quiz": st.session_state.quiz,
+            "user_answers": st.session_state.user_answers,
+            "correct_answers": correct_answers,
+            "total_questions": len(st.session_state.quiz)
+        }
+        st.session_state.quiz_history.append(quiz_result)
+
+        # Clear the current quiz state
+        st.session_state.quiz = None
+        st.session_state.user_answers = {}
+
+# Display Quiz History
+if st.session_state.quiz_history:
+    st.subheader("Quiz History")
+    for idx, quiz_result in enumerate(st.session_state.quiz_history):
+        st.write(f"**Quiz {idx + 1}:** {quiz_result['question']}")
+        st.write(f"**Score:** {quiz_result['correct_answers']} out of {quiz_result['total_questions']} correct")
+        for i, question in enumerate(quiz_result["quiz"]):
+            st.write(f"**Q{i+1}: {question['question']}**")
+            st.write(f"Your answer: {quiz_result['user_answers'][i]}")
+            st.write(f"Correct answer: {question['answer']}")
+        st.write("---")
