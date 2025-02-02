@@ -41,10 +41,22 @@ def call_groq_api(prompt, simplify=False, concise=False):
         return f"Error: {str(e)}"
 
 def answer_question(knowledge_base, question, simplify=False, concise=False):
+    # Retrieve documents from the knowledge base
     docs = knowledge_base.similarity_search(question)
+    
+    # Check if the retrieved documents are relevant
+    if not docs:
+        return "Please ask a question related to deep learning."
+    
+    # Combine the content of the retrieved documents to form the context
     context = " ".join([doc.page_content for doc in docs])
+    
+    # Formulate the prompt for the Groq API
     prompt = f"Context: {context}\n\nQuestion: {question}\n\nAnswer:"
+    
+    # Call the Groq API to generate a response
     response = call_groq_api(prompt, simplify=simplify, concise=concise)
+    
     return response
 
 def generate_quiz(knowledge_base, context, user_prompt):
