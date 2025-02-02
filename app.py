@@ -27,9 +27,21 @@ def load_knowledge_base():
 def call_groq_api(prompt, simplify=False, concise=False):
     try:
         if simplify:
-            prompt = f"Explain the following in a very simple and easy-to-understand way in 1-2 sentences: {prompt}"
+            prompt = f"""
+            Answer the following in a very simple and easy-to-understand way in 1-2 sentences.
+            Format your response as:
+            Answer: [Your answer here]
+            
+            Question: {prompt}
+            """
         elif concise:
-            prompt = f"Provide a concise and crisp answer to the following in 1-2 sentences: {prompt}"
+            prompt = f"""
+            Provide a concise and crisp answer to the following in 1-2 sentences.
+            Format your response as:
+            Answer: [Your answer here]
+            
+            Question: {prompt}
+            """
         response = client.chat.completions.create(
             model="deepseek-r1-distill-llama-70b",
             messages=[{"role": "user", "content": prompt}],
@@ -43,9 +55,33 @@ def call_groq_api(prompt, simplify=False, concise=False):
 def answer_question(knowledge_base, question, simplify=False, concise=False):
     docs = knowledge_base.similarity_search(question)
     context = " ".join([doc.page_content for doc in docs])
-    prompt = f"Context: {context}\n\nQuestion: {question}\n\nAnswer:"
+    prompt = f"""
+    Context: {context}
+    
+    Question: {question}
+    
+    Please format your response as:
+    Answer: [Your answer here]
+    """
     response = call_groq_api(prompt, simplify=simplify, concise=concise)
+    
+    # If response doesn't start with "Answer:", add it
+    if not response.strip().startswith("Answer:"):
+        response = f"Answer: {response}"
+    
     return response
+
+# In the main chat interface section:
+if prompt := st.chat_input("Ask me anything about Deep Learning:"):
+    # Add user message to current chat
+    st.session_state.current_chat["messages"].append({"role": "user", "content": prompt})
+    
+    # Generate response
+    with st.spinner("Thinking..."):
+        response = answer_question(knowledge_base, prompt, concise=True)
+    
+    # Add assistant response to current chat
+    st.session_state.current_chat["messages"].append({"role": "assistant", "content": response})
 
 def generate_quiz(knowledge_base, context, user_prompt):
     prompt = f"Context: {context}\n\nBased on the user's question: '{user_prompt}', generate a quiz with 3 multiple-choice questions. Each question should be concise and have 4 options with one correct answer. Format the quiz as follows:\n\nQ1: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ2: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]\n\nQ3: [Question]\nA) [Option A]\nB) [Option B]\nC) [Option C]\nD) [Option D]\nAnswer: [Correct Option]"
